@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    <rect x="-6.83997" y="-2.63998" width="58.44" height="73.08" fill="url(#pattern0_1_293)" />
+    <defs>
+        <pattern id="pattern0_1_293" patternContentUnits="objectBoundingBox" width="1" height="1">
+            <use xlink:href="#image0_1_293" transform="scale(0.00223714 0.00178897)" />
+        </pattern>
+        <image id="image0_1_293" width="447" height="559"
+            xlink:href="images/doctor1.png" />
+    </defs>
+</svg>
