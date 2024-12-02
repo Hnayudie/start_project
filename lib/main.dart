@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:start_project/schedule.dart';
+import 'package:start_project/doctor_model.dart';
+import 'package:start_project/doctor_data.dart';
+import 'dart:math';
 
 void main() {
   runApp(const MyApp());
@@ -74,8 +77,22 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late HighlightDoctor highlightDoctor;
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    highlightDoctor = highlightDoctorList[_random.nextInt(highlightDoctorList.length)];
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,23 +159,23 @@ class HomeScreen extends StatelessWidget {
                         CircleAvatar(
                           radius: 25,
                           backgroundColor: Colors.white,
-                          child: SvgPicture.asset('images/doctor1.svg'),
+                          child: SvgPicture.asset(highlightDoctor.avatarPath),
                         ),
                         const SizedBox(width: 16),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Dr. Imran Syahir",
-                              style: TextStyle(
+                              highlightDoctor.name,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
-                              "General Doctor",
-                              style: TextStyle(
+                              highlightDoctor.specialty,
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
                               ),
@@ -172,31 +189,31 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     const Divider(color: Colors.blue),
                     const SizedBox(height: 10),
-                    const Row(
+                    Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.calendar_month_outlined,
                           color: Colors.white,
                           size: 18,
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         Text(
-                          "Sunday, 12 June",
-                          style: TextStyle(
+                          highlightDoctor.scheduleDate,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                           ),
                         ),
-                        SizedBox(width: 20),
-                        Icon(
+                        const SizedBox(width: 20),
+                        const Icon(
                           Icons.access_time,
                           color: Colors.white,
                           size: 18,
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         Text(
-                          "11:00 - 12:00 AM",
-                          style: TextStyle(
+                          highlightDoctor.scheduleTime,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                           ),
@@ -248,98 +265,106 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 30),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(16)
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                     Row(
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: nearDoctorList.length,
+                itemBuilder: (BuildContext context, int index) {
+                  final doctor = nearDoctorList[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.white,
-                          child: SvgPicture.asset('images/doctor2.svg'),
-                        ),
-                        const SizedBox(width: 16),
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
                           children: [
-                            Text(
-                              "Dr.Joseph Brostito",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            CircleAvatar(
+                              radius: 25,
+                              backgroundColor: Colors.white,
+                              child: SvgPicture.asset(doctor.avatarPath),
                             ),
-                            Text(
-                              "Dental Speacialist",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  doctor.name,
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  doctor.specialty,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on_outlined,
+                                  color: Colors.grey,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  doctor.distance,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(width: 20),
-                        const Row(
+                        const SizedBox(height: 16),
+                        Divider(color: Colors.grey.shade300),
+                        const SizedBox(height: 16),
+                        Row(
                           children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              color: Colors.grey,
+                            const Icon(
+                              Icons.star,
+                              color: Colors.orange,
                               size: 18,
                             ),
-
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Text(
-                              "1.2 KM",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
+                              "${doctor.rating} (${doctor.review} Reviews)",
+                              style: const TextStyle(
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 30),
+                            const Icon(
+                              Icons.access_time,
+                              color: Colors.blue,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              doctor.availability,
+                              style: const TextStyle(
+                                color: Colors.blue,
                               ),
                             ),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Divider(color: Colors.grey.shade300),
-                    const SizedBox(height: 16),
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          color: Colors.orange,
-                          size: 18,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          "4.8 (120 Reviews)",
-                          style: TextStyle(
-                            color: Colors.orange,
-                          ),
-                        ),
-                        SizedBox(width: 30),
-                        Icon(
-                          Icons.access_time,
-                          color: Colors.blue,
-                          size: 18,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          "Open at 17.00",
-                          style: TextStyle(
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -361,4 +386,5 @@ class HomeScreen extends StatelessWidget {
       ],
     );
   }
+
 }
