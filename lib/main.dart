@@ -1,12 +1,16 @@
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:start_project/schedule.dart';
 import 'package:start_project/doctor_model.dart';
-import 'package:start_project/doctor_data.dart';
 import 'dart:math';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -85,13 +89,30 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late final FirebaseFirestore firestore;
   late HighlightDoctor highlightDoctor;
+  late Future<List<HighlightDoctor>> _highlightDoctors;
   final Random _random = Random();
 
   @override
   void initState() {
-    highlightDoctor = highlightDoctorList[_random.nextInt(highlightDoctorList.length)];
     super.initState();
+    firestore = FirebaseFirestore.instance;
+    _highlightDoctors = _fetchHighlightDoctor();
+  }
+
+  Future<List<HighlightDoctor>> _fetchHighlightDoctor() async {
+    final snapshot = await firestore.collection('HighlightDoctor').get();
+    return snapshot.docs.map((doc){
+      final data = doc.data();
+      return HighlightDoctor(
+          name: data['name'] ?? '',
+          specialty: data['specialty'] ?? '',
+          avatarPath: data['avatarPath'],
+          scheduleDate: data['scheduleDate'] ?? '',
+          scheduleTime: data['scheduleTime'] ?? '',
+      );
+    }).toList();
   }
 
   @override
@@ -145,83 +166,107 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Doctor Highlight Section
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[400],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              FutureBuilder<List<HighlightDoctor>> (
+                future: _highlightDoctors,
+                builder: (context, snapshot) {
+                  if(snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if(snapshot.hasError) {
+                    return const Center(child: Text("Error loading doctors"));
+                  }
+                  if(!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text("No highlight doctor."));
+                  }
+
+                  final doctors = snapshot.data!;
+                  highlightDoctor = doctors[_random.nextInt(doctors.length)];
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[400],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: Colors.white,
-                          child: SvgPicture.asset(highlightDoctor.avatarPath),
-                        ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
                           children: [
-                            Text(
-                              highlightDoctor.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            CircleAvatar(
+                              radius: 25,
+                              backgroundColor: Colors.white,
+                              child: ClipOval(
+                                child: CachedNetworkImage(imageUrl: highlightDoctor.avatarPath, imageBuilder: (context, imageProvider) => Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                                  ),
+                                ),),
                               ),
                             ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  highlightDoctor.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  highlightDoctor.specialty,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Divider(color: Colors.blue),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_month_outlined,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 5),
                             Text(
-                              highlightDoctor.specialty,
+                              highlightDoctor.scheduleDate,
                               style: const TextStyle(
-                                color: Colors.white70,
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            const Icon(
+                              Icons.access_time,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              highlightDoctor.scheduleTime,
+                              style: const TextStyle(
+                                color: Colors.white,
                                 fontSize: 14,
                               ),
                             ),
                           ],
                         ),
-                        const Spacer(),
-                        const Icon(Icons.arrow_forward_ios, color: Colors.white),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    const Divider(color: Colors.blue),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_month_outlined,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          highlightDoctor.scheduleDate,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        const Icon(
-                          Icons.access_time,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          highlightDoctor.scheduleTime,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  );
+                }
               ),
               const SizedBox(height: 30),
               // Search Bar
@@ -265,107 +310,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 30),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: nearDoctorList.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final doctor = nearDoctorList[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 25,
-                              backgroundColor: Colors.white,
-                              child: SvgPicture.asset(doctor.avatarPath),
-                            ),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  doctor.name,
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  doctor.specialty,
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Spacer(),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.grey,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  doctor.distance,
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Divider(color: Colors.grey.shade300),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: Colors.orange,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              "${doctor.rating} (${doctor.review} Reviews)",
-                              style: const TextStyle(
-                                color: Colors.orange,
-                              ),
-                            ),
-                            const SizedBox(width: 30),
-                            const Icon(
-                              Icons.access_time,
-                              color: Colors.blue,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              doctor.availability,
-                              style: const TextStyle(
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              StreamBuilder(
+                  stream: FirebaseFirestore.instance.collection('NearDoctor').snapshots(),
+                  builder: (context, snapshot) {
+                    if(snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if(!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text("No doctor available."));
+                    }
+
+                    final doctors = snapshot.data!.docs.map((doc){
+                      final data = doc.data();
+                      return NearDoctor(
+                          name: data['name'] ?? '',
+                          specialty: data['specialty'] ?? '',
+                          avatarPath: data['avatarPath'],
+                          distance: data['distance'],
+                          rating: (data['rating'] as num).toDouble() ?? 0.0,
+                          review: data['review'] ?? 0,
+                          availability: data['availability']
+                      );
+                    }).toList();
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: doctors.length,
+                      itemBuilder: (context, index) {
+                        return _nearDoctor(doctors[index]);
+                      },
+                    );
+                  }
+              )
             ],
           ),
         ),
@@ -386,5 +362,110 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+
+  Widget _nearDoctor(NearDoctor nearDoctor){
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.white,
+                child: ClipOval(
+                  child: CachedNetworkImage(imageUrl: nearDoctor.avatarPath, imageBuilder: (context, imageProvider) => Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                    ),
+                  )),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nearDoctor.name,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    nearDoctor.specialty,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    color: Colors.grey,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    nearDoctor.distance,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Divider(color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(
+                Icons.star,
+                color: Colors.orange,
+                size: 18,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                "${nearDoctor.rating} (${nearDoctor.review} Reviews)",
+                style: const TextStyle(
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 30),
+              const Icon(
+                Icons.access_time,
+                color: Colors.blue,
+                size: 18,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                nearDoctor.availability,
+                style: const TextStyle(
+                  color: Colors.blue,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
 }

@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 class HighlightDoctor {
   final String name;
   final String specialty;
