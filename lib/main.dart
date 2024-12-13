@@ -1,4 +1,3 @@
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -60,8 +59,8 @@ class _MainScreenState extends State<MainScreen> {
         unselectedItemColor: Colors.grey,
         items: [
           BottomNavigationBarItem(
-            label: 'Home',
-            icon: SvgPicture.asset('images/home.svg', width: 30, height: 30, color: _selectedIndex == 0 ?  Colors.blue : Colors.grey)
+              label: 'Home',
+              icon: SvgPicture.asset('images/home.svg', width: 30, height: 30, color: _selectedIndex == 0 ?  Colors.blue : Colors.grey)
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset('images/calendar.svg', width: 30, height: 30, color: _selectedIndex == 1 ?  Colors.blue : Colors.grey),
@@ -90,29 +89,80 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final FirebaseFirestore firestore;
-  late HighlightDoctor highlightDoctor;
+  late List<HighlightDoctor> highlightDoctor;
   late Future<List<HighlightDoctor>> _highlightDoctors;
   final Random _random = Random();
+  TextEditingController _searchController = TextEditingController();
+  late Stream<List<HighlightDoctor>> _filteredDoctorsStream;
 
   @override
   void initState() {
     super.initState();
     firestore = FirebaseFirestore.instance;
     _highlightDoctors = _fetchHighlightDoctor();
+    _filteredDoctorsStream = Stream.value([]);
+    _searchController.addListener(_searchDoctors);
   }
 
+  // Fetch doctors list from Firestore
   Future<List<HighlightDoctor>> _fetchHighlightDoctor() async {
-    final snapshot = await firestore.collection('HighlightDoctor').get();
-    return snapshot.docs.map((doc){
-      final data = doc.data();
-      return HighlightDoctor(
+    try {
+      final snapshot = await firestore.collection('HighlightDoctor').get();
+      List<HighlightDoctor> doctors = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return HighlightDoctor(
+          name: data['name'] ?? '',
+          specialty: data['specialty'] ?? '',
+          avatarPath: data['avatarPath'] ?? '',
+          scheduleDate: data['scheduleDate'] ?? '',
+          scheduleTime: data['scheduleTime'] ?? '',
+        );
+      }).toList();
+
+      if (doctors.isNotEmpty) {
+        doctors.shuffle(_random);
+      }
+
+      return doctors;
+    } catch (e) {
+      print('Error fetching data: $e');
+      return [];
+    }
+  }
+
+  // Search filter function
+  void _searchDoctors() {
+    final query = _searchController.text;
+    if (query.isNotEmpty) {
+      setState(() {
+        _filteredDoctorsStream = _getFilteredDoctors(query);
+      });
+    } else {
+      setState(() {
+        _filteredDoctorsStream = Stream.value([]);
+      });
+    }
+  }
+
+  // Query Firestore to filter doctors based on search input
+  Stream<List<HighlightDoctor>> _getFilteredDoctors(String query) {
+    return firestore
+        .collection('HighlightDoctor')
+        .where('name', isGreaterThanOrEqualTo: query)
+        .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return HighlightDoctor(
           name: data['name'] ?? '',
           specialty: data['specialty'] ?? '',
           avatarPath: data['avatarPath'],
           scheduleDate: data['scheduleDate'] ?? '',
           scheduleTime: data['scheduleTime'] ?? '',
-      );
-    }).toList();
+        );
+      }).toList();
+    });
   }
 
   @override
@@ -166,21 +216,22 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Doctor Highlight Section
-              FutureBuilder<List<HighlightDoctor>> (
+              FutureBuilder<List<HighlightDoctor>>(
                 future: _highlightDoctors,
                 builder: (context, snapshot) {
-                  if(snapshot.connectionState == ConnectionState.waiting) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  if(snapshot.hasError) {
+                  if (snapshot.hasError) {
                     return const Center(child: Text("Error loading doctors"));
                   }
-                  if(!snapshot.hasData || snapshot.data!.isEmpty) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Center(child: Text("No highlight doctor."));
                   }
 
                   final doctors = snapshot.data!;
-                  highlightDoctor = doctors[_random.nextInt(doctors.length)];
+                  final highlightDoctor = doctors.isNotEmpty ? doctors[0] :
+                      HighlightDoctor(name: 'N/A', specialty: 'N/A', avatarPath: '', scheduleDate: '', scheduleTime: '');
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -196,12 +247,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               radius: 25,
                               backgroundColor: Colors.white,
                               child: ClipOval(
-                                child: CachedNetworkImage(imageUrl: highlightDoctor.avatarPath, imageBuilder: (context, imageProvider) => Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                                child: CachedNetworkImage(
+                                  imageUrl: highlightDoctor.avatarPath,
+                                  imageBuilder: (context, imageProvider) => Container(
+                                    decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                                    ),
                                   ),
-                                ),),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -266,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   );
-                }
+                },
               ),
               const SizedBox(height: 30),
               // Search Bar
@@ -275,9 +329,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(16),
-
                 ),
                 child: TextField(
+                  controller: _searchController,
                   onTapOutside: (event) {
                     FocusManager.instance.primaryFocus?.unfocus();
                   },
@@ -288,8 +342,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
+              // Filtered Doctors List
+              StreamBuilder<List<HighlightDoctor>>(
+                stream: _filteredDoctorsStream,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return const Center(child: Text("Error"));
+                  }
+
+                  final doctors = snapshot.data!;
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: doctors.length,
+                    itemBuilder: (context, index) {
+                      final doctor = doctors[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: NetworkImage(doctor.avatarPath),
+                        ),
+                        title: Text(doctor.name),
+                        subtitle: Text(doctor.specialty),
+                        onTap: () {
+                          // Add navigation or action when a doctor is tapped
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
               const SizedBox(height: 30),
-              // Quick Actions
+              // Quick Actions Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -301,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 30),
 
-              //Near Doctor Session
+              // Near Doctor Session
               const Text(
                 "Near Doctor",
                 style: TextStyle(
@@ -313,10 +400,10 @@ class _HomeScreenState extends State<HomeScreen> {
               StreamBuilder(
                   stream: FirebaseFirestore.instance.collection('NearDoctor').snapshots(),
                   builder: (context, snapshot) {
-                    if(snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if(!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const Center(child: Text("No doctor available."));
                     }
 
@@ -341,7 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     );
                   }
-              )
+              ),
             ],
           ),
         ),
@@ -363,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _nearDoctor(NearDoctor nearDoctor){
+  Widget _nearDoctor(NearDoctor nearDoctor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -382,8 +469,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ClipOval(
                   child: CachedNetworkImage(imageUrl: nearDoctor.avatarPath, imageBuilder: (context, imageProvider) => Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                        borderRadius: BorderRadius.circular(16),
+                        image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
                     ),
                   )),
                 ),
@@ -465,7 +552,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-
-
 }

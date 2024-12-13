@@ -8,91 +8,47 @@ class ScheduleScreen extends StatefulWidget {
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
-
 }
 
-class _ScheduleScreenState  extends State<ScheduleScreen> {
+class _ScheduleScreenState extends State<ScheduleScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: DefaultTabController(
         length: 3,
         child: Column(
           children: [
-            Material(
-              child: Container(
-                height: 60,
-                color: Colors.white,
-                child: TabBar(
-                  isScrollable: true,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  unselectedLabelColor: Colors.grey,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    color: Colors.blue.withOpacity(0.1),
-                  ),
-                  tabs: [
-                    Tab(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        height: 50,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.grey, width: 1),
-                        ),
-                        child: const Align(
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Canceled Schedule",
-                            overflow: TextOverflow.visible,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Tab(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        height: 50,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.grey, width: 1),
-                        ),
-                        child: const Align(
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Upcoming Schedule",
-                            overflow: TextOverflow.visible,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Tab(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        height: 50,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.grey, width: 1),
-                        ),
-                        child: const Align(
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Completed Schedule",
-                            overflow: TextOverflow.visible,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+            // Custom TabBar
+            SizedBox(
+              height: 70,
+              child: TabBar(
+                isScrollable: true,
+                automaticIndicatorColorAdjustment: false,
+                overlayColor: MaterialStateProperty.all<Color>(Colors.transparent),
+                unselectedLabelColor: Colors.grey,
+                padding: const EdgeInsets.only(left: 16),
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  color: Colors.blue.withOpacity(0.1),
                 ),
+                tabAlignment: TabAlignment.center,
+
+                tabs: [
+                  _buildCustomTab("Canceled Schedule"),
+                  _buildCustomTab("Upcoming Schedule"),
+                  _buildCustomTab("Completed Schedule"),
+                ],
               ),
             ),
+            // TabBarView for each tab
             Expanded(
               child: TabBarView(
                 children: [
@@ -102,13 +58,13 @@ class _ScheduleScreenState  extends State<ScheduleScreen> {
                   StreamBuilder<QuerySnapshot>(
                     stream: firestore.collection('HighlightDoctor').snapshots(),
                     builder: (context, snapshot) {
-                      if(snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      if(!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return const Center(child: Text('No Upcoming Schedules.'));
                       }
-                      final doctors = snapshot.data!.docs.map((doc){
+                      final doctors = snapshot.data!.docs.map((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         return HighlightDoctor(
                           name: data['name'] ?? 'Unknown',
@@ -132,20 +88,45 @@ class _ScheduleScreenState  extends State<ScheduleScreen> {
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
+  // Helper method for custom tab design
+  Widget _buildCustomTab(String title) {
+    return Tab(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Align(
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.visible,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget for upcoming schedule cards
   Widget _upComingSchedule(HighlightDoctor highlightDoctor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(16)
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,13 +137,18 @@ class _ScheduleScreenState  extends State<ScheduleScreen> {
                 radius: 25,
                 backgroundColor: Colors.white,
                 child: ClipOval(
-                  child: CachedNetworkImage(imageUrl: highlightDoctor.avatarPath, imageBuilder: (context, imageProvider) => Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
-
+                  child: CachedNetworkImage(
+                    imageUrl: highlightDoctor.avatarPath,
+                    imageBuilder: (context, imageProvider) => Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        image: DecorationImage(
+                          image: imageProvider,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
-                  ),),
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -230,7 +216,6 @@ class _ScheduleScreenState  extends State<ScheduleScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-
             child: const Text(
               "Detail",
               style: TextStyle(color: Colors.blue),
@@ -241,7 +226,3 @@ class _ScheduleScreenState  extends State<ScheduleScreen> {
     );
   }
 }
-
-
-
-
