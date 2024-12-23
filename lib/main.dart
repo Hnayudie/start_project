@@ -33,7 +33,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   static const List<Widget> _widgetOptions = <Widget>[
-    HomeScreen(), // Sử dụng HomeScreen từ file riêng
+    HomeScreen(),
     ScheduleScreen(),
     Center(child: Text('Messages Screen', style: TextStyle(fontSize: 20))),
     Center(child: Text('Profile Screen', style: TextStyle(fontSize: 20))),

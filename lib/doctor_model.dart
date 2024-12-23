@@ -34,3 +34,15 @@ class NearDoctor {
 });
 }
 
+class AllDoctor {
+  late final String name;
+  late final String specialty;
+  late final String avatarPath;
+
+  AllDoctor({
+    required this.name,
+    required this.specialty,
+    required this.avatarPath,
+});
+}
+

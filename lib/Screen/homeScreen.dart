@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<List<HighlightDoctor>> _highlightDoctors;
   final Random _random = Random();
   TextEditingController _searchController = TextEditingController();
-  late Stream<List<HighlightDoctor>> _filteredDoctorsStream;
+  late Stream<List<AllDoctor>> _filteredDoctorsStream;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -25,7 +28,14 @@ class _HomeScreenState extends State<HomeScreen> {
     firestore = FirebaseFirestore.instance;
     _highlightDoctors = _fetchHighlightDoctor();
     _filteredDoctorsStream = Stream.value([]);
-    _searchController.addListener(_searchDoctors);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
   }
 
   // Fetch doctors list from Firestore
@@ -54,38 +64,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Search filter function
-  void _searchDoctors() {
-    final query = _searchController.text;
-    if (query.isNotEmpty) {
-      setState(() {
-        _filteredDoctorsStream = _getFilteredDoctors(query);
-      });
-    } else {
-      setState(() {
-        _filteredDoctorsStream = Stream.value([]);
-      });
-    }
+  //Search filter with debounce
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 1000), () {
+      final query = _searchController.text;
+      if(query.isNotEmpty) {
+        setState(() {
+          _filteredDoctorsStream = _getFilteredDoctors(query);
+        });
+      } else {
+        setState(() {
+          _filteredDoctorsStream = Stream.value([]);
+        });
+      }
+    });
   }
 
   // Query Firestore to filter doctors based on search input
-  Stream<List<HighlightDoctor>> _getFilteredDoctors(String query) {
+  Stream<List<AllDoctor>> _getFilteredDoctors(String query) {
+    final searchChars = query.split('');
+
     return firestore
-        .collection('HighlightDoctor')
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+        .collection('AllDoctor')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final allDoctors =  snapshot.docs.map((doc) {
         final data = doc.data();
-        return HighlightDoctor(
+        return AllDoctor(
           name: data['name'] ?? '',
           specialty: data['specialty'] ?? '',
           avatarPath: data['avatarPath'],
-          scheduleDate: data['scheduleDate'] ?? '',
-          scheduleTime: data['scheduleTime'] ?? '',
         );
       }).toList();
+      final exactMatches = allDoctors
+          .where((doctor) =>
+              doctor.name.toLowerCase() == query.trim().toLowerCase())
+          .toList();
+
+      if(exactMatches.isNotEmpty) {
+        return exactMatches;
+      } else {
+        return allDoctors
+            .where((doctor) =>
+                doctor.name.toLowerCase().contains(query.trim().toLowerCase()))
+            .toList();
+      }
     });
   }
 
@@ -268,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 20),
               // Filtered Doctors List
-              StreamBuilder<List<HighlightDoctor>>(
+              StreamBuilder<List<AllDoctor>>(
                 stream: _filteredDoctorsStream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -393,8 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ClipOval(
                   child: CachedNetworkImage(imageUrl: nearDoctor.avatarPath, imageBuilder: (context, imageProvider) => Container(
                     decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                        borderRadius: BorderRadius.circular(16), image: DecorationImage(image: imageProvider, fit: BoxFit.cover)
                     ),
                   )),
                 ),
