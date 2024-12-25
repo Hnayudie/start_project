@@ -1,8 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:start_project/Screen/schedule.dart';
-import 'Screen/homeScreen.dart';
+import 'package:start_project/Screen/Schedule/schedule_screen.dart';
+import 'Screen/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,32 +48,50 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _widgetOptions[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
+    return CupertinoTabScaffold(
+      tabBar: CupertinoTabBar(
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        items: [
+        onTap: (int index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        activeColor: Colors.blue,
+        inactiveColor: Colors.grey,
+        items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
               label: 'Home',
-              icon: SvgPicture.asset('images/home.svg', width: 30, height: 30, color: _selectedIndex == 0 ?  Colors.blue : Colors.grey)
+              icon: SvgPicture.asset('images/home.svg', width: 30,
+                  height: 30,
+                  color: _selectedIndex == 0 ? Colors.blue : Colors.grey)
           ),
           BottomNavigationBarItem(
-            icon: SvgPicture.asset('images/calendar.svg', width: 30, height: 30, color: _selectedIndex == 1 ?  Colors.blue : Colors.grey),
+            icon: SvgPicture.asset('images/calendar.svg', width: 30,
+                height: 30,
+                color: _selectedIndex == 1 ? Colors.blue : Colors.grey),
             label: 'Schedule',
           ),
           BottomNavigationBarItem(
-            icon: SvgPicture.asset('images/message.svg', width: 28, height: 28, color: _selectedIndex == 2 ?  Colors.blue : Colors.grey),
+            icon: SvgPicture.asset('images/message.svg', width: 28,
+                height: 28,
+                color: _selectedIndex == 2 ? Colors.blue : Colors.grey),
             label: 'Messages',
           ),
           BottomNavigationBarItem(
-            icon: SvgPicture.asset('images/person.svg', width: 30, height: 30, color: _selectedIndex == 3 ?  Colors.blue : Colors.grey),
+            icon: SvgPicture.asset('images/person.svg', width: 30,
+                height: 30,
+                color: _selectedIndex == 3 ? Colors.blue : Colors.grey),
             label: 'Profile',
           ),
         ],
       ),
+      tabBuilder: (BuildContext context, int index) {
+        return CupertinoTabView(
+          builder: (BuildContext context) {
+            return _widgetOptions[index];
+          },
+        );
+      },
     );
   }
 }
